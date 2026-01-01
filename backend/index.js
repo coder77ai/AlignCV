@@ -1,5 +1,7 @@
-import express from "express";
+import express, { application } from "express";
 import cors from "cors";
+import multer from "multer";
+import fs from "fs";
 
 
 const app = express();
@@ -17,3 +19,31 @@ app.post("/analyze", (req, res) => {
 app.listen(5000, () => {
     console.log("Backend running on port 5000");
 });
+
+// uploading space 
+const upload = multer({dest:"uploads/"});
+
+app.post("/parse-resume", upload.single("resume"), async(req, res) => {
+    try {
+        const file = req.file;
+        let text = "";
+
+        if(file.mimetype === "application/pdf"){
+            const dataBuffer = fs.readFileSync(file.path);
+            const pdfData = await import("pdf-parse");
+            const parsed = await pdfData.setDefaultParseParameters(dataBuffer);
+            text = parsed.text;
+        }
+        else if(file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.documnent")
+            {
+                const result = await mammoth.extractRawText({path:file.path});
+                text = result.value;
+            }
+            res.json({resumeText: text});
+    }
+    catch(err){
+        res.status(500).json({error:"Resume parsing failed"});
+    }
+});
+
+fs.unlinkSync(file.path);
